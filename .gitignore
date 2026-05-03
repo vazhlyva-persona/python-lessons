@@ -22,5 +22,8 @@ env/
 .vscode/
 *.swp
 
+# Database
+*.db
+
 # Render / deployment
 *.log

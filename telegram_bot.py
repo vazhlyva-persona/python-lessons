@@ -25,6 +25,9 @@ from telegram.ext import (
 
 from checker import check_answer_full
 from lessons import LESSONS
+from storage import get_done, init_db, mark_done, reset_progress
+
+init_db()
 
 logging.basicConfig(
     format="%(asctime)s  %(levelname)s  %(name)s  %(message)s",
@@ -40,6 +43,10 @@ MAX_TG_LEN = 4000  # Telegram message limit (~4096; we stay under)
 def split_message(text: str) -> list[str]:
     """Split long text into chunks that fit a Telegram message."""
     return textwrap.wrap(text, MAX_TG_LEN, break_long_words=False, replace_whitespace=False)
+
+
+def tg_uid(update: Update) -> str:
+    return f"tg_{update.effective_user.id}"
 
 
 def lesson_by_id(lesson_id: int):
@@ -70,10 +77,15 @@ def lesson_nav_keyboard(lesson_id: int):
 # ── Command handlers ───────────────────────────────────────────────
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    done  = get_done(tg_uid(update))
+    total = len(LESSONS)
+    count = len(done)
     await update.message.reply_text(
         "👋 *Welcome to Python Lessons!*\n\n"
         "I'll walk you through Python step by step and use AI to check your answers.\n\n"
-        "Use /lessons to see all topics, or /lesson 1 to jump straight in.",
+        f"Your progress: *{count} / {total}* lessons completed.\n\n"
+        "Use /lessons to see all topics, /lesson 1 to jump straight in, "
+        "or /progress to see which lessons you've finished.",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -108,6 +120,26 @@ async def cmd_hint(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text = "No hints for this lesson."
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+
+async def cmd_progress(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    done  = get_done(tg_uid(update))
+    total = len(LESSONS)
+    lines = []
+    for l in LESSONS:
+        mark = "✅" if l["id"] in done else "⬜"
+        lines.append(f"{mark} {l['id']}. {l['title']}")
+    text = (
+        f"📊 *Your progress: {len(done)} / {total}*\n\n"
+        + "\n".join(lines)
+        + "\n\nUse /reset to start over."
+    )
+    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+
+async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reset_progress(tg_uid(update))
+    await update.message.reply_text("🔄 Progress reset. Use /lessons to start fresh.")
 
 
 async def cmd_next(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -193,9 +225,13 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Offer navigation after correct answer
     if "✅" in feedback:
+        mark_done(tg_uid(update), lesson_id)
         context.user_data["waiting_for_code"] = False
+        done  = get_done(tg_uid(update))
+        count = len(done)
+        total = len(LESSONS)
         await update.message.reply_text(
-            "Great job! What's next?",
+            f"Great job! Progress: {count}/{total} lessons done. What's next?",
             reply_markup=lesson_nav_keyboard(lesson_id),
         )
     else:
@@ -213,11 +249,13 @@ def main():
 
     app = Application.builder().token(token).build()
 
-    app.add_handler(CommandHandler("start",   cmd_start))
-    app.add_handler(CommandHandler("lessons", cmd_lessons))
-    app.add_handler(CommandHandler("lesson",  cmd_lesson))
-    app.add_handler(CommandHandler("hint",    cmd_hint))
-    app.add_handler(CommandHandler("next",    cmd_next))
+    app.add_handler(CommandHandler("start",    cmd_start))
+    app.add_handler(CommandHandler("lessons",  cmd_lessons))
+    app.add_handler(CommandHandler("lesson",   cmd_lesson))
+    app.add_handler(CommandHandler("hint",     cmd_hint))
+    app.add_handler(CommandHandler("next",     cmd_next))
+    app.add_handler(CommandHandler("progress", cmd_progress))
+    app.add_handler(CommandHandler("reset",    cmd_reset))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
 
