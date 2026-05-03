@@ -139,6 +139,25 @@
   }
   #code-editor:focus { border-color: var(--accent); }
 
+  /* ── Mobile code toolbar ── */
+  #code-toolbar {
+    display: flex; gap: 0.35rem; overflow-x: auto;
+    padding: 0.4rem 0; margin-bottom: 0.4rem;
+    scrollbar-width: none;
+  }
+  #code-toolbar::-webkit-scrollbar { display: none; }
+  .ctb {
+    flex-shrink: 0;
+    padding: 0.38rem 0.65rem;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text);
+    font-family: "Fira Code", Consolas, "Courier New", monospace;
+    font-size: 0.82rem; cursor: pointer;
+    user-select: none; -webkit-user-select: none;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .ctb:active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
   /* Feedback */
   #feedback-wrap { margin-top: 0.75rem; }
   #feedback {
@@ -222,6 +241,21 @@
             <button class="btn btn-clear" onclick="clearEditor()">✕ Clear</button>
             <button class="btn btn-run"   onclick="submitCode()">▶ Run &amp; Check</button>
           </div>
+        </div>
+        <div id="code-toolbar">
+          <button class="ctb" onclick="insertAt('    ')">⇥ tab</button>
+          <button class="ctb" onclick="insertAt('.')">.</button>
+          <button class="ctb" onclick="insertAt('/')">/</button>
+          <button class="ctb" onclick="insertAt(':')">:</button>
+          <button class="ctb" onclick="insertAt('()')">( )</button>
+          <button class="ctb" onclick="insertAt('[]')">[ ]</button>
+          <button class="ctb" onclick="insertAt('{}')">{ }</button>
+          <button class="ctb" onclick="insertAt('""')">""</button>
+          <button class="ctb" onclick="insertAt("''")">''</button>
+          <button class="ctb" onclick="insertAt('=')">=</button>
+          <button class="ctb" onclick="insertAt('_')">_</button>
+          <button class="ctb" onclick="insertAt('#')">#</button>
+          <button class="ctb" onclick="insertAt('\n')">↵</button>
         </div>
         <textarea id="code-editor" spellcheck="false"
           placeholder="# Write your Python code here...&#10;# Press Ctrl+Enter (or click Run & Check) to evaluate"></textarea>
@@ -314,6 +348,20 @@ function showTab(name) {
 }
 
 // ── Editor helpers ─────────────────────────────────────────────────
+function insertAt(text) {
+  const ta = document.getElementById("code-editor");
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+  const pos = s + text.length;
+  // For paired chars like () [] "", place cursor between them
+  if (["()", "[]", "{}", '""', "''"].includes(text)) {
+    ta.selectionStart = ta.selectionEnd = pos - 1;
+  } else {
+    ta.selectionStart = ta.selectionEnd = pos;
+  }
+  ta.focus();
+}
+
 function clearEditor() {
   document.getElementById("code-editor").value = "";
   hideFeedback();
