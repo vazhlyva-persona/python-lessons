@@ -128,7 +128,7 @@ def get_history(user_id: str, limit: int = 5) -> list[dict]:
     with _conn() as c:
         rows = c.execute(
             """SELECT code, output, ran_at FROM run_history
-               WHERE user_id = ? ORDER BY ran_at DESC LIMIT ?""",
+               WHERE user_id = ? ORDER BY id DESC LIMIT ?""",
             (user_id, limit),
         ).fetchall()
     return [dict(row) for row in rows]
