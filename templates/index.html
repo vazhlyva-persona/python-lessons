@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐍 Python Lessons</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --bg:       #0f0f17;
+    --surface:  #1a1a2e;
+    --border:   #2a2a40;
+    --text:     #e2e8f0;
+    --muted:    #94a3b8;
+    --accent:   #6366f1;
+    --green:    #22c55e;
+    --yellow:   #facc15;
+    --code-bg:  #12121c;
+    --sidebar-w: 260px;
+  }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 15px;
+  }
+
+  /* ── Layout ── */
+  #app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #sidebar-header {
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700; font-size: 1rem; color: var(--accent);
+    letter-spacing: 0.01em;
+  }
+  #sidebar-header small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+  #lesson-list { overflow-y: auto; flex: 1; padding: 0.5rem 0; }
+  .lesson-btn {
+    width: 100%; text-align: left; padding: 0.6rem 1.2rem;
+    background: none; border: none; border-left: 3px solid transparent;
+    color: var(--text); cursor: pointer; font-size: 0.82rem; line-height: 1.4;
+    transition: background 0.15s;
+  }
+  .lesson-btn:hover  { background: var(--border); }
+  .lesson-btn.active { border-left-color: var(--accent); background: rgba(99,102,241,0.1); color: #a5b4fc; }
+  .lesson-btn.done   { color: var(--green); }
+  .lesson-btn.done::before { content: "✓ "; }
+  #progress-bar-wrap { padding: 0.8rem 1.2rem; border-top: 1px solid var(--border); }
+  #progress-label    { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
+  #progress-bar      { height: 4px; background: var(--border); border-radius: 2px; }
+  #progress-fill     { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; width: 0%; }
+
+  /* ── Main area ── */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Welcome screen */
+  #welcome {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 0.75rem; color: var(--muted); text-align: center;
+  }
+  #welcome .emoji { font-size: 4rem; }
+  #welcome h2     { margin: 0; color: var(--text); }
+  #welcome p      { margin: 0; max-width: 340px; }
+
+  /* Lesson view */
+  #lesson-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #lesson-header {
+    padding: 1.2rem 1.8rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  #lesson-header h1 { margin: 0 0 0.8rem; font-size: 1.25rem; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; }
+  .tab {
+    padding: 0.55rem 1rem; cursor: pointer; font-size: 0.83rem;
+    border-bottom: 2px solid transparent; color: var(--muted);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab:hover  { color: var(--text); }
+  .tab.active { border-bottom-color: var(--accent); color: var(--accent); }
+
+  /* Content panels */
+  #panels { flex: 1; overflow-y: auto; padding: 1.4rem 1.8rem; }
+  .panel  { display: none; }
+  .panel.active { display: block; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem 1.2rem; overflow-x: auto;
+    font-size: 0.82rem; line-height: 1.65; margin: 0;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  pre.exercise { background: #1a1810; border-color: #4a3f10; }
+  code { font-family: "Fira Code", Consolas, "Courier New", monospace; }
+
+  /* Editor section */
+  #editor-section {
+    border-top: 1px solid var(--border);
+    background: var(--surface); padding: 1rem 1.8rem;
+    flex-shrink: 0;
+  }
+  #editor-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  #editor-toolbar span { font-size: 0.82rem; color: var(--muted); }
+  #editor-toolbar span kbd {
+    background: var(--border); padding: 1px 5px; border-radius: 4px; font-size: 0.78rem;
+  }
+  .btn-row { display: flex; gap: 0.5rem; }
+  .btn {
+    padding: 0.4rem 0.9rem; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 0.82rem; font-weight: 600; transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-run    { background: var(--accent); color: #fff; }
+  .btn-hint   { background: var(--border); color: var(--text); }
+  .btn-clear  { background: var(--border); color: var(--muted); }
+  #code-editor {
+    width: 100%; min-height: 160px; max-height: 340px;
+    background: var(--code-bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.8rem 1rem; resize: vertical; outline: none;
+    font-family: "Fira Code", Consolas, "Courier New", monospace;
+    font-size: 0.82rem; line-height: 1.65; tab-size: 4;
+    transition: border-color 0.15s;
+  }
+  #code-editor:focus { border-color: var(--accent); }
+
+  /* Feedback */
+  #feedback-wrap { margin-top: 0.75rem; }
+  #feedback {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.9rem 1.1rem;
+    font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap;
+    color: var(--text); display: none; min-height: 52px;
+  }
+  #feedback.streaming { border-color: var(--accent); }
+  #feedback.correct   { border-color: var(--green); }
+  #feedback.incorrect { border-color: #f87171; }
+  #spinner { display: none; font-size: 0.82rem; color: var(--muted); padding: 0.4rem 0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      🐍 Python Lessons
+      <small>AI-powered feedback</small>
+    </div>
+    <div id="lesson-list"></div>
+    <div id="progress-bar-wrap">
+      <div id="progress-label">0 / {{ lessons|length }} completed</div>
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Welcome -->
+    <div id="welcome">
+      <div class="emoji">🐍</div>
+      <h2>Welcome to Python Lessons</h2>
+      <p>Pick a lesson from the sidebar, read the explanation,<br>
+         write your solution, and get instant AI feedback.</p>
+    </div>
+
+    <!-- Lesson view (hidden until a lesson is selected) -->
+    <div id="lesson-view" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+      <div id="lesson-header">
+        <h1 id="lesson-title"></h1>
+        <div class="tabs">
+          <div class="tab active" data-tab="explanation">📖 Explanation</div>
+          <div class="tab"        data-tab="example">💡 Example</div>
+          <div class="tab"        data-tab="exercise">✏️ Exercise</div>
+        </div>
+      </div>
+
+      <div id="panels">
+        <div class="panel active" id="panel-explanation"><pre><code id="content-explanation"></code></pre></div>
+        <div class="panel"        id="panel-example">   <pre><code id="content-example"></code></pre></div>
+        <div class="panel"        id="panel-exercise">  <pre class="exercise"><code id="content-exercise"></code></pre></div>
+      </div>
+
+      <div id="editor-section">
+        <div id="editor-toolbar">
+          <span>Your solution &nbsp;·&nbsp; <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</span>
+          <div class="btn-row">
+            <button class="btn btn-hint"  onclick="showHint()">💡 Hint</button>
+            <button class="btn btn-clear" onclick="clearEditor()">✕ Clear</button>
+            <button class="btn btn-run"   onclick="submitCode()">▶ Run &amp; Check</button>
+          </div>
+        </div>
+        <textarea id="code-editor" spellcheck="false"
+          placeholder="# Write your Python code here...&#10;# Press Ctrl+Enter (or click Run & Check) to evaluate"></textarea>
+        <div id="feedback-wrap">
+          <div id="spinner">🤖 Checking your code…</div>
+          <div id="feedback"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+const LESSONS = {{ lessons | tojson }};
+let current = null;
+
+// ── Progress tracking ──────────────────────────────────────────────
+const STORAGE_KEY = "py_lessons_done";
+function getDone() { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); }
+function markDone(id) {
+  const done = getDone(); done.add(id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...done]));
+  updateProgress();
+}
+function updateProgress() {
+  const done  = getDone();
+  const total = LESSONS.length;
+  const count = [...done].filter(id => LESSONS.some(l => l.id === id)).length;
+  document.getElementById("progress-label").textContent = `${count} / ${total} completed`;
+  document.getElementById("progress-fill").style.width  = `${(count / total) * 100}%`;
+  LESSONS.forEach(l => {
+    const btn = document.getElementById(`btn-${l.id}`);
+    if (btn) btn.classList.toggle("done", done.has(l.id));
+  });
+}
+
+// ── Build sidebar ──────────────────────────────────────────────────
+const list = document.getElementById("lesson-list");
+LESSONS.forEach(l => {
+  const btn = document.createElement("button");
+  btn.className = "lesson-btn";
+  btn.id        = `btn-${l.id}`;
+  btn.textContent = `${l.id}. ${l.title}`;
+  btn.addEventListener("click", () => loadLesson(l.id));
+  list.appendChild(btn);
+});
+updateProgress();
+
+// ── Load lesson ────────────────────────────────────────────────────
+function loadLesson(id) {
+  current = LESSONS.find(l => l.id === id);
+  if (!current) return;
+
+  document.querySelectorAll(".lesson-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById(`btn-${id}`).classList.add("active");
+
+  document.getElementById("welcome").style.display      = "none";
+  document.getElementById("lesson-view").style.display  = "flex";
+
+  document.getElementById("lesson-title").textContent    = `Lesson ${current.id}: ${current.title}`;
+  document.getElementById("content-explanation").textContent = current.explanation;
+  document.getElementById("content-example").textContent     = current.example;
+  document.getElementById("content-exercise").textContent    = current.exercise;
+
+  showTab("explanation");
+  clearEditor();
+}
+
+// ── Tab switching ──────────────────────────────────────────────────
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => showTab(tab.dataset.tab));
+});
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(t =>
+    t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach(p =>
+    p.classList.toggle("active", p.id === `panel-${name}`));
+}
+
+// ── Editor helpers ─────────────────────────────────────────────────
+function clearEditor() {
+  document.getElementById("code-editor").value = "";
+  hideFeedback();
+}
+function hideFeedback() {
+  const fb = document.getElementById("feedback");
+  fb.style.display = "none"; fb.className = ""; fb.textContent = "";
+  document.getElementById("spinner").style.display = "none";
+}
+
+// ── Hints ──────────────────────────────────────────────────────────
+function showHint() {
+  if (!current || !current.hints || !current.hints.length) return;
+  const fb = document.getElementById("feedback");
+  fb.style.display = "block";
+  fb.className     = "";
+  fb.textContent   = "💭 Hints:\n" + current.hints.map((h, i) => `${i+1}. ${h}`).join("\n");
+}
+
+// ── Submit code ────────────────────────────────────────────────────
+async function submitCode() {
+  if (!current) return;
+  const code = document.getElementById("code-editor").value.trim();
+  if (!code) { alert("Write some code first!"); return; }
+
+  hideFeedback();
+  document.getElementById("spinner").style.display = "block";
+
+  const fb = document.getElementById("feedback");
+  fb.style.display = "block";
+  fb.className     = "streaming";
+  fb.textContent   = "";
+
+  let fullText = "";
+  try {
+    const resp = await fetch("/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lesson_id: current.id, code }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value).split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const payload = line.slice(6);
+        if (payload === "[DONE]") {
+          fb.className = fullText.includes("✅") ? "correct" : "incorrect";
+          document.getElementById("spinner").style.display = "none";
+          if (fullText.includes("✅")) markDone(current.id);
+        } else {
+          try { fullText += JSON.parse(payload).text; fb.textContent = fullText; } catch {}
+        }
+      }
+    }
+  } catch (err) {
+    fb.textContent   = "Error: " + err.message;
+    fb.className     = "incorrect";
+    document.getElementById("spinner").style.display = "none";
+  }
+}
+
+// Ctrl/Cmd+Enter shortcut
+document.getElementById("code-editor").addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); submitCode(); }
+});
+
+// Tab key inserts spaces in editor
+document.getElementById("code-editor").addEventListener("keydown", e => {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    const ta = e.target, s = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + "    " + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = s + 4;
+  }
+});
+</script>
+</body>
+</html>

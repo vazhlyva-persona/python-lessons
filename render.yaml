@@ -1,0 +1,26 @@
+services:
+  # ── Web app (lessons UI) ───────────────────────────────────────────
+  - type: web
+    name: python-lessons-web
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn web_app:app
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # set manually in Render dashboard
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  # ── Telegram bot (background worker) ─────────────────────────────
+  - type: worker
+    name: python-lessons-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python telegram_bot.py
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # set manually in Render dashboard
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false          # set manually in Render dashboard
+      - key: PYTHON_VERSION
+        value: "3.11.0"
